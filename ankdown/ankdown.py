@@ -45,7 +45,7 @@ dollar: True
 A configuration can also be passed as a string: `"{dollar: True, card_model_name: CustomModelName, card_model_css: \".card {text-align: left;}\"}"`
 
 Usage:
-    ankdown.py [-r DIR] [-p PACKAGENAME] [--highlight] [--config CONFIG_STRING] [--configFile CONFIG_FILE_PATH]
+    ankdown.py [-r DIR] [-p PACKAGENAME] [--highlight] [--config=CONFIG_STRING] [--configFile=CONFIG_FILE_PATH]
 
 Options:
     -h --help     Show this help message
@@ -57,9 +57,9 @@ Options:
 
     --highlight   Enable syntax highlighting for code
 
-    --config CONFIG_STRING   ankdown configuration as YAML string
+    --config=CONFIG_STRING  ankdown configuration as YAML string
 
-    --configFile CONFIG_FILE_PATH path to ankdown configuration as YAML file
+    --configFile=CONFIG_FILE_PATH   path to ankdown configuration as YAML file
 """
 
 
@@ -82,7 +82,6 @@ from pygments import highlight
 from pygments.formatters import HtmlFormatter, ClassNotFound
 from pygments.lexers import get_lexer_by_name
 
-
 class HighlighterRenderer(misaka.HtmlRenderer):
     def blockcode(self, text, lang):
         try:
@@ -100,7 +99,6 @@ class HighlighterRenderer(misaka.HtmlRenderer):
 
 renderer = HighlighterRenderer()
 highlight_markdown = misaka.Markdown(renderer, extensions=("fenced-code", "math"))
-
 
 VERSION = "0.7.1"
 
@@ -353,7 +351,7 @@ def apply_arguments(arguments):
     if arguments.get('--configFile') is not None:
         config_file_path = os.path.abspath(os.path.expanduser(arguments.get('--configFile')))
         with open(config_file_path, 'r') as config_file:
-            CONFIG.update(yaml.load(config_file))
+            CONFIG.update(yaml.load(config_file, yaml.FullLoader))
     if arguments.get('--config') is not None:
         CONFIG.update(yaml.load(arguments.get('--config')))
     if arguments.get('-p') is not None:
