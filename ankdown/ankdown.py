@@ -37,15 +37,18 @@ Ankdown can be configured via yaml. A possible configuration file might look lik
 ```yaml
 recur_dir: ~/ankdown_cards
 pkg_arg: ~/ankdown_cards.apkg
+math_mode: dollars
+misaka_renderer: HighlighterRenderer,
+misaka_extensions: [fenced-code, math, tables],
 card_model_name: CustomModelName
 card_model_css: ".card {font-family: 'Crimson Pro', 'Crimson Text', 'Cardo', 'Times', 'serif'; text-align: left; color: black; background-color: white;}"
-dollar: True
+
 ```
 
-A configuration can also be passed as a string: `"{dollar: True, card_model_name: CustomModelName, card_model_css: \".card {text-align: left;}\"}"`
+A configuration can also be passed as a string: `"{card_model_name: CustomModelName, card_model_css: \".card {text-align: left;}\"}"`
 
 Usage:
-    ankdown.py [-r DIR] [-p PACKAGENAME] [--highlight] [--config=CONFIG_STRING] [--configFile=CONFIG_FILE_PATH]
+    ankdown.py [-r DIR] [-p PACKAGENAME] [--config=CONFIG_STRING] [--configFile=CONFIG_FILE_PATH]
 
 Options:
     -h --help     Show this help message
@@ -54,8 +57,6 @@ Options:
     -r DIR        Recursively visit DIR, accumulating cards from `.md` files.
 
     -p PACKAGE    Instead of a .txt file, produce a .apkg file. recommended.
-
-    --highlight   Enable syntax highlighting for code
 
     --config=CONFIG_STRING  ankdown configuration as YAML string
 
@@ -96,10 +97,6 @@ class HighlighterRenderer(misaka.HtmlRenderer):
         return '\n<pre><code>{}</code></pre>\n'.format(
             h.escape_html(text.strip()))
 
-
-renderer = HighlighterRenderer()
-highlight_markdown = misaka.Markdown(renderer, extensions=("fenced-code", "math"))
-
 VERSION = "0.7.1"
 
 # Anki 2.1 has mathjax built in, but ankidroid and other clients don't.
@@ -133,8 +130,9 @@ MathJax.Hub.Config({
 CONFIG = {
     'pkg_arg': 'AnkdownPkg.apkg',
     'recur_dir': '.',
-    'dollar': False,
-    'highlight': False,
+    'math_mode': 'brackets',
+    'misaka_renderer': 'HtmlRenderer',
+    'misaka_extensions': ['fenced-code', 'math'],
     'card_model_name': 'Ankdown Model 2',
     'card_model_css': """
         .card {
@@ -261,7 +259,7 @@ class DeckCollection(dict):
 def field_to_html(field):
     """Need to extract the math in brackets so that it doesn't get markdowned.
     If math is separated with dollar sign it is converted to brackets."""
-    if CONFIG['dollar']:
+    if CONFIG['math_mode'] is 'dollars':
         for (sep, (op, cl)) in [("$$", (r"\\[", r"\\]")), ("$", (r"\\(", r"\\)"))]:
             escaped_sep = sep.replace(r"$", r"\$")
             # ignore escaped dollar signs when splitting the field    
@@ -269,16 +267,23 @@ def field_to_html(field):
             # add op(en) and cl(osing) brackets to every second element of the list
             field[1::2] = [op + e + cl for e in field[1::2]] 
             field = "".join(field)
+    #
+    # CONFIG['math_mode'] is 'brackets' OR fallback case
+    #
     else:
         for bracket in ["(", ")", "[", "]"]:
             field = field.replace(r"\{}".format(bracket), r"\\{}".format(bracket))
             # backslashes, man.
     
-    if CONFIG['highlight']:
-        return highlight_markdown(field)
-
-
-    return misaka.html(field, extensions=("fenced-code", "math"))
+    if CONFIG['misaka_renderer'] is 'HighlighterRenderer':
+        renderer = HighlighterRenderer()
+    #
+    # CONFIG['misakq_renderer'] is 'HtmlRenderer' OR fallback case
+    #
+    else:
+        renderer = misaka.HtmlRenderer()
+    
+    return misaka.Markdown(renderer, CONFIG['misaka_extensions'])(field)
 
 
 def compile_field(field_lines, is_markdown):
@@ -358,16 +363,13 @@ def apply_arguments(arguments):
         CONFIG['pkg_arg'] = arguments.get('-p')
     if arguments.get('-r') is not None:
         CONFIG['recur_dir'] = arguments.get('-r')
-    if arguments.get('--highlight'):
-        CONFIG['highlight'] = True
-
-
-def apply_highlight_css():
-    global CONFIG
-    css_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'highlight.css')
-    with open(css_file_path) as css_file:
-        CONFIG['card_model_css'] += css_file.read().replace('\n', '')
-
+    #
+    # add highlight css rules
+    #
+    if CONFIG['misaka_renderer'] is 'HighlighterRenderer':
+        highlight_css_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'highlight.css')
+        with open(highlight_css_file_path) as highlight_css_file:
+            CONFIG['card_model_css'] += highlight_css_file.read().replace('\n', '')
 
 def main():
     """Run the thing."""
@@ -376,9 +378,6 @@ def main():
     initial_dir = os.getcwd()
     recur_dir = os.path.abspath(os.path.expanduser(CONFIG['recur_dir']))
     pkg_arg = os.path.abspath(os.path.expanduser(CONFIG['pkg_arg']))
-
-    if CONFIG['highlight']:
-        apply_highlight_css()
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         os.chdir(tmpdirname) # genanki is very opinionated about where we are.
