@@ -259,7 +259,7 @@ class DeckCollection(dict):
 def field_to_html(field):
     """Need to extract the math in brackets so that it doesn't get markdowned.
     If math is separated with dollar sign it is converted to brackets."""
-    if CONFIG['math_mode'] is 'dollars':
+    if CONFIG['math_mode'] == 'dollars':
         for (sep, (op, cl)) in [("$$", (r"\\[", r"\\]")), ("$", (r"\\(", r"\\)"))]:
             escaped_sep = sep.replace(r"$", r"\$")
             # ignore escaped dollar signs when splitting the field    
@@ -275,7 +275,7 @@ def field_to_html(field):
             field = field.replace(r"\{}".format(bracket), r"\\{}".format(bracket))
             # backslashes, man.
     
-    if CONFIG['misaka_renderer'] is 'HighlighterRenderer':
+    if CONFIG['misaka_renderer'] == 'HighlighterRenderer':
         renderer = HighlighterRenderer()
     #
     # CONFIG['misakq_renderer'] is 'HtmlRenderer' OR fallback case
@@ -353,20 +353,20 @@ def cards_to_apkg(cards, output_name):
 
 def apply_arguments(arguments):
     global CONFIG
-    if arguments.get('--configFile') is not None:
+    if arguments.get('--configFile') != None:
         config_file_path = os.path.abspath(os.path.expanduser(arguments.get('--configFile')))
         with open(config_file_path, 'r') as config_file:
             CONFIG.update(yaml.load(config_file, yaml.FullLoader))
-    if arguments.get('--config') is not None:
+    if arguments.get('--config') != None:
         CONFIG.update(yaml.load(arguments.get('--config')))
-    if arguments.get('-p') is not None:
+    if arguments.get('-p') != None:
         CONFIG['pkg_arg'] = arguments.get('-p')
-    if arguments.get('-r') is not None:
+    if arguments.get('-r') != None:
         CONFIG['recur_dir'] = arguments.get('-r')
     #
     # add highlight css rules
     #
-    if CONFIG['misaka_renderer'] is 'HighlighterRenderer':
+    if CONFIG['misaka_renderer'] == 'HighlighterRenderer':
         highlight_css_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'highlight.css')
         with open(highlight_css_file_path) as highlight_css_file:
             CONFIG['card_model_css'] += highlight_css_file.read().replace('\n', '')
